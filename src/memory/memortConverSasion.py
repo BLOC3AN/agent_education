@@ -1,6 +1,7 @@
 from langchain.memory import ConversationBufferMemory, ConversationSummaryBufferMemory
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from src.memory.redis_memory import RedisConversationMemory
+from src.memory.redis_summaryMemory import SummarizingRedisMemory
 from src.utils.logger import Logger
 logger = Logger(__name__)
 
@@ -31,5 +32,11 @@ class MemoryConversation:
     def redis_conversation_memory(self, session_id="default"):
         """Create a Redis-backed conversation memory."""
         logger.info(f"Creating RedisConversationMemory for session_id: {session_id}")
-        memory = RedisConversationMemory(session_id=session_id).chat_messages
+        memory = RedisConversationMemory(session_id=session_id) 
+        return memory
+    
+    def redis_conversation_summary_memory(self, llm, redis_url="redis://localhost:6379", session_id="default"):
+        """Create a Redis-backed conversation memory."""
+        logger.info(f"Creating RedisConversationMemory for session_id: {session_id}")
+        memory = SummarizingRedisMemory(llm=llm, redis_url=redis_url, session_id=session_id) 
         return memory

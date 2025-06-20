@@ -30,11 +30,12 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1G
-          cpus: '0.5'
+          memory: 10G
+          cpus: '2.5'
         reservations:
           memory: 512M
-          cpus: '0.25'
+          cpus: '1.25'
+
 
   # Optional: Redis for caching (future use)
   redis:
@@ -43,18 +44,67 @@ services:
     ports:
       - "6379:6379"
     volumes:
-      - redis-data:/data
+      - ../data/redis:/data
     restart: unless-stopped
     networks:
       - agent-network
     command: redis-server --appendonly yes
 
+
+  qdrant:
+    image: qdrant/qdrant:latest 
+    container_name: agent-education-qdrant
+    restart: always
+    ports:
+      - "6333:6333" # For REST API
+      - "6334:6334" # For gRPC
+    expose:
+      - 6333 # For REST API
+      - 6334 # For gRPC
+      - 6335 # For internal communication
+    configs:
+      - source: qdrant_config
+        target: /qdrant/config/production.yaml
+    volumes:
+      - ../data/qdrant:/qdrant/storage
+      # - qdrant-data:/qdrant/persistent
+    networks:
+      - agent-network
+  
+  emmeded:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile.emmbed
+    container_name: agent-education-emmbed
+    ports:
+      - "3010:3010"
+    environment:
+      - PYTHONPATH=/app
+    env_file:
+      - ../.env
+    restart: unless-stopped
+    command:
+      - python3
+      - emmbed_data.py
+    networks:
+      - agent-network
+
 volumes:
   agent-logs:
     driver: local
+
   redis-data:
     driver: local
+
+  # qdrant-data:
+  #   driver: local
+
 
 networks:
   agent-network:
     driver: bridge
+
+configs:
+  qdrant_config:
+    content: |
+      log_level: INFO   

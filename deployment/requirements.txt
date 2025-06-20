@@ -19,3 +19,12 @@ cryptography>=41.0.0
 # Performance
 redis==5.0.1
 
+
+qdrant_client==1.14.3
+fastembed==0.7.1
+
+pydantic==2.11.7
+python-dotenv==1.1.0
+python_docx==1.2.0
+
+sentence-transformers

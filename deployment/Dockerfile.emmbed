@@ -1,0 +1,11 @@
+FROM python:3.10-slim
+WORKDIR /app
+
+# Copy code
+COPY . .
+
+# Cài đặt thư viện cần thiết
+RUN pip install -r requirements.txt
+
+# Embed rồi tự dừng container
+CMD ["python", "emmbed_data.py"]
