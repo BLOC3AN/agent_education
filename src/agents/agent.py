@@ -73,8 +73,11 @@ class AgentConversation:
             
             logger.info(f"📜 Response keys from Agent: {result}")
 
-            if 'intermediate_steps' in result:
+            # Kiểm tra và log intermediate_steps nếu có
+            if 'intermediate_steps' in result and result['intermediate_steps']:
                 logger.info(f"🔧 Tools used in this conversation: {len(result['intermediate_steps'])} steps")
+            else:
+                logger.info("🔧 No tools were used in this conversation")
 
             return result
 
@@ -82,4 +85,79 @@ class AgentConversation:
             logger.error(f"❌ Error in create Conversation Agent execution: {str(e)}")
             logger.warning(f"input:{input}")
             return {"Error as conversation_agent": str(e)}
-        
+
+    def stream(self, input: str, session_id: str = "default"):
+        """
+        Stream response từ agent theo thời gian thực
+        Yields từng chunk của response
+        """
+        start_time = time.time()
+        logger.info(f"📝 Using session ID: {session_id}")
+        logger.info(f"⏱️ Starting agent streaming at: {start_time}")
+
+        try:
+            memory = MemoryConversation().conversation_buffer_memory()
+
+            agent = create_tool_calling_agent(self.llm_model.llm, self.tools, self.prompt)
+            agent_executor = AgentExecutor(
+                agent=agent,
+                memory=memory,
+                tools=self.tools,
+                verbose=self.VERBOSE,
+                max_iterations=self.MAX_ITERATIONS,
+                early_stopping_method=self.EARLY_STOPPING_METHOD,
+                max_execution_time=self.MAX_EXECUTION_TIME,
+                handle_parsing_errors=self.HANDLE_PARSING_ERRORS,
+            )
+            logger.info("✅ Conversation Agent created successfully for streaming")
+
+            before_stream = time.time()
+            logger.info(f"⏱️ Time to create agent: {before_stream - start_time:.4f} seconds")
+
+            # Sử dụng stream thay vì invoke
+            full_response = ""
+            for chunk in agent_executor.stream({"input": f"{input}", "chat_history": memory}):
+                if "output" in chunk:
+                    # Yield từng phần của output
+                    chunk_text = chunk["output"]
+                    full_response += chunk_text
+                    yield {
+                        "type": "output",
+                        "content": chunk_text,
+                        "full_response": full_response
+                    }
+                elif "intermediate_steps" in chunk:
+                    # Yield thông tin về intermediate steps nếu có
+                    yield {
+                        "type": "intermediate_step",
+                        "content": chunk["intermediate_steps"],
+                        "full_response": full_response
+                    }
+                elif "actions" in chunk:
+                    # Yield thông tin về actions
+                    yield {
+                        "type": "action",
+                        "content": str(chunk["actions"]),
+                        "full_response": full_response
+                    }
+
+            end_time = time.time()
+            logger.info(f"⏱️ Agent streaming completed in: {end_time - start_time:.4f} seconds")
+            logger.info(f"⏱️ LLM streaming time: {end_time - before_stream:.4f} seconds")
+
+            # Yield kết quả cuối cùng
+            yield {
+                "type": "final",
+                "content": full_response,
+                "full_response": full_response,
+                "execution_time": end_time - start_time
+            }
+
+        except Exception as e:
+            logger.error(f"❌ Error in agent streaming execution: {str(e)}")
+            logger.warning(f"input:{input}")
+            yield {
+                "type": "error",
+                "content": f"Error: {str(e)}",
+                "full_response": ""
+            }
