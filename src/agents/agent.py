@@ -3,6 +3,8 @@ from langchain.agents import AgentExecutor, create_tool_calling_agent
 from src.llms.gemini import Gemini 
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from src.memory.memortConverSasion import MemoryConversation
+from src.utils.redis_client import RedisClient
+
 import time
 
 from src.utils.logger import Logger
@@ -47,8 +49,13 @@ class AgentConversation:
         logger.info(f"⏱️ Starting agent execution at: {start_time}")
 
         try:
-            memory = MemoryConversation().conversation_buffer_memory()
-
+            # Kiểm tra Redis trước khi tạo memory
+            redis_client = RedisClient()
+            redis_client.debug_redis()
+            
+            # Sử dụng Redis memory
+            memory = MemoryConversation().redis_conversation_memory(session_id=session_id)
+            logger.info(f"✅ RedisConversationMemory created successfully for session: {session_id}")
             agent = create_tool_calling_agent(self.llm_model.llm, self.tools, self.prompt)
             agent_executor = AgentExecutor(
                 agent=agent,
@@ -96,7 +103,9 @@ class AgentConversation:
         logger.info(f"⏱️ Starting agent streaming at: {start_time}")
 
         try:
-            memory = MemoryConversation().conversation_buffer_memory()
+            # Sử dụng Redis memory thay vì buffer memory
+            memory = MemoryConversation().redis_conversation_memory(session_id=session_id)
+            logger.info(f"✅ RedisConversationMemory created for streaming with session: {session_id}")
 
             agent = create_tool_calling_agent(self.llm_model.llm, self.tools, self.prompt)
             agent_executor = AgentExecutor(

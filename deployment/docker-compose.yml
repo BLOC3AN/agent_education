@@ -1,0 +1,60 @@
+
+services:
+  agent-education:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile.agent
+    container_name: agent-education-app
+    ports:
+      - "8501:8501"
+    environment:
+      - PYTHONPATH=/app
+    env_file:
+      - ../.env
+    volumes:
+      # Development volumes (comment out for production)
+      - ../src:/app/src:ro
+      - ../gui:/app/gui:ro
+      - ../main.py:/app/main.py:ro
+      # Logs volume
+      - agent-logs:/app/logs
+    restart: unless-stopped
+    networks:
+      - agent-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
+
+  # Optional: Redis for caching (future use)
+  redis:
+    image: redis:7-alpine
+    container_name: agent-education-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    networks:
+      - agent-network
+    command: redis-server --appendonly yes
+
+volumes:
+  agent-logs:
+    driver: local
+  redis-data:
+    driver: local
+
+networks:
+  agent-network:
+    driver: bridge

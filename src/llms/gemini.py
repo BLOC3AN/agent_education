@@ -1,4 +1,7 @@
+from dotenv import load_dotenv
+load_dotenv()
 from langchain_google_genai import ChatGoogleGenerativeAI
+import os
 
 class Gemini:
     def __init__(self, model_name="gemini-2.0-flash"):
