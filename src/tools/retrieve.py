@@ -8,7 +8,6 @@ class RetrieveData:
     def __init__(self):
         self.qdrant = QdrantVectorDB()
         
-    
     def retrieve(self, collection_name:str, query_text:str, limit:int=3):
         try:
             results = self.qdrant.query(collection_name, query_text, limit)

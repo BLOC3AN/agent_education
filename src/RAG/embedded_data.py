@@ -6,8 +6,7 @@ logger = Logger(__name__)
 
 class EmmbededData:
     def __init__(self):
-        self.qdrant = QdrantVectorDB()
-        self.vector_size = 128
+        self.vector_size = 384
         self.data = []
 
     def read_docx(self, filepath):
@@ -26,14 +25,11 @@ class EmmbededData:
         try:
             text = self.read_docx(filepath)
             document = self.split_text(text)
-
             logger.info(f"Loaded {len(document)} documents from {filepath}")
-            try:
-                self.qdrant.create_collection(collection_name,  self.vector_size)
-            except FileExistsError:
-                logger.warning(f"Collection {collection_name} already exists")
-            self.qdrant.upsert(collection_name, document)
+
+            QdrantVectorDB().upsert(collection_name, document)
             logger.info(f"Upserted {len(document)} documents to collection {collection_name}")
+        
         except Exception as e:
             logger.error(f"Failed to embedded data: {e}")
 

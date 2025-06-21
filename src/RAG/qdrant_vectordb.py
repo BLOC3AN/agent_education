@@ -1,28 +1,42 @@
 from qdrant_client import QdrantClient, models
-from sentence_transformers import SentenceTransformer
 import os
 from src.utils.logger import Logger
-from typing import Any
+from typing import Any, List
 logger = Logger(__name__)
 
 
 class QdrantVectorDB:
     def __init__(self):
         self.url = os.getenv("QDRANT_URL", "http://localhost:6333")
-        self.embedding_model = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
         self.client = QdrantClient(url=self.url)
-        self.vector_name = "default"
-    
-    def _check_collection(self):
+        self.vector_name = "dense"
+        self.model_emmbedding = "BAAI/bge-small-en"
+
+        logger.info(f"""
+            QdrantVectorDB initialized with:
+            - URL: {self.url}
+            - Vector name: {self.vector_name}
+            - Model embedding: {self.model_emmbedding}
+        """)
+    # Check if collection exists
+    def  check_collection(self,collection_name:str):
         try:
             collections = self.client.get_collections().model_dump().get("collections")
-            logger.info(f"Collections: {collections}")
-            return True
+            if {'name':collection_name} in collections: #type:ignore
+                logger.info(f"Collection `{collection_name}` already exists")
+                return True
+            logger.warning(f"Collection `{collection_name}` does not exist")
+            return False
         except Exception as e:
-            print(f"❌ Failed to check collection: {e}")
+            logger.error(f"❌ Failed to check collection: {e}")
             return False
 
     def create_collection(self, collection_name:str, vector_size:int=128) -> Any:
+        """Create a collection"""
+        if self.check_collection(collection_name):
+            logger.error(f"❌ Collection {collection_name} already exists")
+            return False
+        
         try:
             self.client.create_collection(
                 collection_name=collection_name,
@@ -41,35 +55,47 @@ class QdrantVectorDB:
 
     def upsert(self, collection_name: str, documents: list[str]) -> Any:
         try:
-            vectors = self.embedding_model.encode(documents).tolist()
+            dense_documents = [
+                models.Document(text=doc, model="BAAI/bge-small-en")
+                for doc in documents
+            ]
             points = [
                 models.PointStruct(
                     id=i,
-                    vector={self.vector_name: vectors[i]},
+                    vector={
+                        self.vector_name : dense_documents[i],
+                    },
                     payload={"text": documents[i]}
                 ) for i in range(len(documents))
             ]
-            self.client.upsert(
-                collection_name=collection_name,
-                points=points,
-                wait=True
-            )
+            self.client.upsert(collection_name=collection_name, points=points)
             logger.info(f"✅ Upserted {len(points)} points to collection {collection_name}")
         except Exception as e:
             logger.error(f"❌ Failed to upsert: {e}")
 
 
     def query(self, collection_name: str, query_text: str, limit: int = 3) -> Any:
+        """Query a collection"""
+        if not self.check_collection(collection_name):
+            logger.error(f"❌ Collection {collection_name} does not exist")
+            return False
+        
         try:
-            vector = self.embedding_model.encode(query_text).tolist()
-            results = self.client.search(
+            dense_query = models.Document(text=query_text, model=self.model_emmbedding)
+            results = self.client.query_points(
                 collection_name=collection_name,
-                query_vector=vector,
+                prefetch=models.Prefetch(
+                    query=dense_query,
+                    using="dense",
+                ),
+                query=dense_query,
+                using="dense",
                 limit=limit,
                 with_payload=True
-            )
-            logger.info(f"✅ Retrieved {len(results)} results from collection {collection_name}")
+            ).model_dump().get("points")
+            logger.info(f"✅ Retrieved results from collection {collection_name}")
             return results
+        
         except Exception as e:
             logger.error(f"❌ Failed to query: {e}")
             return None
