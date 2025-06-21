@@ -19,18 +19,17 @@ Agent Education là một hệ thống AI đa tác vụ được thiết kế đ
 ```
 agent_education/
 ├── src/
-│   ├── agents/                    # Các AI Agent chính
-│   │   ├── agent.py              # Agent hội thoại chính
-│   │   ├── splittask.py          # Agent chia nhỏ nhiệm vụ
-│   │   ├── enhanced_splittask.py # Agent chia task nâng cao
-│   │   └── context_aware_split_task.py # Agent hiểu ngữ cảnh
+│   ├── agents/                    # AI Agent
+│   │   └── agent.py              # Agent hội thoại chính
 │   ├── llms/                     # Tích hợp mô hình ngôn ngữ
 │   │   └── gemini.py            # Google Gemini LLM
 │   ├── RAG/                     # Retrieval-Augmented Generation
 │   │   ├── embedded_data.py     # Xử lý embedding tài liệu
 │   │   └── qdrant_vectordb.py   # Qdrant vector database
 │   ├── memory/                  # Quản lý bộ nhớ hội thoại
-│   │   └── memortConverSasion.py
+│   │   ├── memortConverSasion.py # Memory conversation
+│   │   ├── redis_memory.py      # Redis memory integration
+│   │   └── redis_summaryMemory.py # Redis summary memory
 │   ├── prompts/                 # Template prompt cho agent
 │   │   └── conversation_agent.md
 │   ├── tools/                   # Công cụ hỗ trợ
@@ -38,8 +37,8 @@ agent_education/
 │   ├── utils/                   # Tiện ích hỗ trợ
 │   │   ├── logger.py           # Hệ thống logging
 │   │   └── redis_client.py     # Redis client cho caching
-│   ├── config/                  # Cấu hình hệ thống
-│   └── MCP/                    # Model Context Protocol
+│   ├── config/                  # Cấu hình hệ thống (trống)
+│   └── MCP/                    # Model Context Protocol (trống)
 ├── data/                       # Dữ liệu và storage
 │   ├── RAG/                   # Tài liệu giáo dục (.docx)
 │   ├── qdrant/                # Qdrant vector storage
@@ -59,12 +58,11 @@ agent_education/
 
 ## ✨ Tính năng chính
 
-### 🤖 Multi-Agent System
+### 🤖 AI Agent System
 - **Conversation Agent**: Agent hội thoại chính với khả năng hiểu ngữ cảnh
-- **Split-Task Agent**: Chia nhỏ nhiệm vụ phức tạp thành các bước đơn giản
-- **Enhanced Split-Task**: Agent chia task với khả năng nâng cao
-- **Context-Aware Split**: Agent hiểu ngữ cảnh sâu cho việc chia task
 - **Memory Management**: Lưu trữ và quản lý lịch sử hội thoại với Redis
+- **Redis Integration**: Multiple memory types (buffer, summary)
+- **Retrieve Tool**: Công cụ tìm kiếm thông tin hỗ trợ agent
 
 ### 🔍 RAG (Retrieval-Augmented Generation)
 - **Document Processing**: Xử lý tài liệu .docx và chia nhỏ thành chunks
@@ -201,17 +199,18 @@ result = agent.run(input="Hãy cho tôi biết nếu bị lở chân tay thì s�
 print(result)
 ```
 
-### 📋 Split-Task Agent
+### 🔧 Memory Management
 ```python
-from src.agents.enhanced_splittask import EnhancedSplitTaskAgent
+from src.memory.redis_memory import RedisMemory
+from src.memory.redis_summaryMemory import RedisSummaryMemory
 
-# Khởi tạo enhanced split-task agent
-agent = EnhancedSplitTaskAgent()
+# Sử dụng Redis memory
+redis_memory = RedisMemory(session_id="user_123")
+summary_memory = RedisSummaryMemory(session_id="user_123")
 
-# Chia nhỏ nhiệm vụ phức tạp
-complex_task = "Lập kế hoạch học tập cho học sinh lớp 4 môn Toán trong 1 tháng"
-result = agent.run(input=complex_task)
-print(result)
+# Lưu và lấy conversation history
+redis_memory.save_context({"input": "Câu hỏi"}, {"output": "Trả lời"})
+history = redis_memory.load_memory_variables({})
 ```
 
 ### 🔍 RAG với Qdrant
@@ -333,17 +332,19 @@ memory: 16G  # thay vì 10G
 ## 📈 Roadmap phát triển
 
 ### ✅ Đã hoàn thành
-- [x] **Multi-Agent System**: Hệ thống đa agent chuyên biệt
+- [x] **Conversation Agent**: Agent hội thoại cơ bản
 - [x] **RAG Integration**: Tích hợp Retrieval-Augmented Generation
 - [x] **Vector Database**: Qdrant cho semantic search
 - [x] **Docker Deployment**: Container orchestration
 - [x] **Web Interface**: Streamlit GUI với streaming
-- [x] **Memory Management**: Redis caching và conversation history
+- [x] **Memory Management**: Redis memory với multiple types
+- [x] **Document Processing**: Embedding tài liệu .docx
 
 ### 🔄 Đang phát triển
-- [ ] **Enhanced Split-Task Agent**: Cải thiện agent chia nhỏ nhiệm vụ
-- [ ] **Context-Aware Split Task**: Agent hiểu ngữ cảnh sâu hơn
-- [ ] **Tool Integration**: Tích hợp thêm công cụ hỗ trợ giáo dục
+- [ ] **Split-Task Agent**: Agent chia nhỏ nhiệm vụ phức tạp
+- [ ] **Enhanced Split-Task**: Agent chia task nâng cao
+- [ ] **Context-Aware Split**: Agent hiểu ngữ cảnh sâu
+- [ ] **Tool Integration**: Mở rộng retrieve tool
 
 ### 🎯 Kế hoạch tương lai
 - [ ] **Multi-modal Support**: Hỗ trợ hình ảnh, audio
