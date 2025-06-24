@@ -1,0 +1,21 @@
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# Cài đặt pandoc và các gói cần thiết (ví dụ: curl nếu muốn dùng pypandoc.download_pandoc sau này)
+RUN apt-get update && \
+    apt-get install -y pandoc && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Cài đặt Python dependencies
+RUN pip install --no-cache-dir fastapi uvicorn python-dotenv langchain_core==0.3.65 langchain==0.3.25 pydantic pypandoc==1.15
+
+# Copy source code
+COPY src/ ./src/
+
+EXPOSE 9099
+
+ENV PYTHONPATH=/app
+
+CMD ["python3", "-m", "uvicorn", "src.MCP.server:app", "--host", "0.0.0.0", "--port", "9099"]

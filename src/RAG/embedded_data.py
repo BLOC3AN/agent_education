@@ -12,7 +12,8 @@ class EmmbededData:
     def read_docx(self, filepath):
         doc = Document(filepath)
         text = "\n".join([para.text for para in doc.paragraphs if para.text.strip() != ""])
-        return text
+        file_name = filepath.split("/")[-1].replace(" ","_").replace(".docx","")
+        return text, file_name
     
     def split_text(self, text):
         splitter = RecursiveCharacterTextSplitter(
@@ -22,12 +23,16 @@ class EmmbededData:
         return splitter.split_text(text)
     
     def emmbeded(self, filepath:str, collection_name:str):
+        if not QdrantVectorDB().check_collection(collection_name):
+            logger.info(f"Creating collection {collection_name}")
+            QdrantVectorDB().create_collection(collection_name, vector_size=self.vector_size)
+            logger.info(f"Created collection {collection_name}")
         try:
-            text = self.read_docx(filepath)
+            text, file_name = self.read_docx(filepath)
             document = self.split_text(text)
             logger.info(f"Loaded {len(document)} documents from {filepath}")
 
-            QdrantVectorDB().upsert(collection_name, document)
+            QdrantVectorDB().upsert(collection_name, document,file_name)
             logger.info(f"Upserted {len(document)} documents to collection {collection_name}")
         
         except Exception as e:

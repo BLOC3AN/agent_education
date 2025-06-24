@@ -13,12 +13,13 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     STREAMLIT_SERVER_ADDRESS=0.0.0.0 \
     STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
 
-# Create non-root user for security
-RUN groupadd -r appuser && useradd -r -g appuser appuser
+# Create non-root user for security với UID/GID cố định
+RUN groupadd -r appuser --gid=1000 && useradd -r -g appuser --uid=1000 appuser
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     curl \
+    sudo \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
@@ -35,8 +36,16 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Copy source code
 COPY . .
 
-# Change ownership to non-root user
-RUN chown -R appuser:appuser /app
+# Create data directory và set permission
+RUN mkdir -p /app/data/agent_data && \
+    chown -R appuser:appuser /app && \
+    chmod -R 755 /app && \
+    chmod -R 777 /app/data
+
+# Copy và set permission cho entrypoint script
+COPY deployment/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh && \
+    echo "appuser ALL=(ALL) NOPASSWD: /bin/chown, /bin/chmod" >> /etc/sudoers
 
 # Switch to non-root user
 USER appuser
@@ -48,6 +57,6 @@ EXPOSE 8501
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8501/_stcore/health || exit 1
 
-# Run the application
-CMD ["streamlit", "run", "main.py", "--server.address", "0.0.0.0","--server.enableCORS", "false", "--server.enableXsrfProtection", "false"]
+# Run the application với entrypoint script
+CMD ["/entrypoint.sh"]
 #streamlit run gui.py --server.port 8501 --server.enableCORS false --server.enableXsrfProtection false

@@ -3,12 +3,13 @@ import os
 from src.utils.logger import Logger
 from typing import Any, List
 logger = Logger(__name__)
-
+import uuid
 
 class QdrantVectorDB:
     def __init__(self):
-        self.url = os.getenv("QDRANT_URL", "http://localhost:6333")
-        self.client = QdrantClient(url=self.url)
+        self.url = os.getenv("QDRANT_CLOUD_URL", "http://localhost:6333")
+        self.api_key=os.getenv("QDRANT_API_KEY")
+        self.client = QdrantClient(url=self.url, api_key=self.api_key)
         self.vector_name = "dense"
         self.model_emmbedding = "BAAI/bge-small-en"
 
@@ -40,7 +41,7 @@ class QdrantVectorDB:
         try:
             self.client.create_collection(
                 collection_name=collection_name,
-                vectors_config={
+                vectors_config={    
                     self.vector_name: models.VectorParams(
                         size=vector_size,
                         distance=models.Distance.COSINE,
@@ -53,7 +54,7 @@ class QdrantVectorDB:
         except Exception as e:
             logger.error(f"Failed to create collection: {e}")
 
-    def upsert(self, collection_name: str, documents: list[str]) -> Any:
+    def upsert(self, collection_name: str, documents: list[str], file_name:str="default") -> Any:
         try:
             dense_documents = [
                 models.Document(text=doc, model="BAAI/bge-small-en")
@@ -61,11 +62,11 @@ class QdrantVectorDB:
             ]
             points = [
                 models.PointStruct(
-                    id=i,
+                    id=str(uuid.uuid4()),
                     vector={
                         self.vector_name : dense_documents[i],
                     },
-                    payload={"text": documents[i]}
+                    payload={"text": documents[i], "file": file_name}
                 ) for i in range(len(documents))
             ]
             self.client.upsert(collection_name=collection_name, points=points)

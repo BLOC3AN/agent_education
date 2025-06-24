@@ -1,0 +1,22 @@
+{
+    "name": "convert_md_to_docx",
+    "description": "Convert markdown content to docx file. Creates a Word document from markdown text.",
+    "args_schema": {
+        "type": "object",
+        "properties": {
+            "message": {
+                "type": "string",
+                "description": "Markdown content to convert to docx format"
+            },
+            "output_filename": {
+                "type": "string",
+                "description": "Name of the output docx file (without extension). If not provided, a timestamp-based name will be generated."
+            }
+        },
+        "required": ["message"]
+    },
+    "endpoint": {
+        "method": "POST",
+        "url": "/tools/convert_md_to_docx"
+    }
+}

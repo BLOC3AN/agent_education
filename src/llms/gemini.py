@@ -8,11 +8,11 @@ class Gemini:
         self.model_name = model_name
         self.llm = ChatGoogleGenerativeAI(
             model=self.model_name,
-            temperature=0,
+            temperature=0.1,
             max_tokens=None,
             timeout=None,
             max_retries=2,
             top_p=0.2,
-            top_k=40,
+            top_k=10,
             verbose=True,
         )

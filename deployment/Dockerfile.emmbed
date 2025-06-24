@@ -2,10 +2,13 @@ FROM python:3.10-slim
 WORKDIR /app
 
 # Copy code
-COPY . .
+COPY requirements.txt requirements.txt
 
 # Cài đặt thư viện cần thiết
-RUN pip install -r requirements.txt
+RUN pip install --no-cache-dir  -r requirements.txt
 
+RUN pip install --no-cache-dir  python-dotenv fastembed
+
+COPY . .
 # Embed rồi tự dừng container
 CMD ["python", "emmbed_data.py"]

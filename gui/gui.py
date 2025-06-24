@@ -1,5 +1,7 @@
 import streamlit as st
 from src.agents.agent import AgentConversation
+from src.tools.get_all_MCP_tools import discover_and_create_mcp_tools
+
 
 # Cấu hình page chỉ chạy một lần
 if "page_config_set" not in st.session_state:
@@ -7,8 +9,16 @@ if "page_config_set" not in st.session_state:
     st.session_state.page_config_set = True
 
 class GUI:
-    def __init__(self, agent):
+    def __init__(self, agent=None):
         self.agent = agent
+
+    def _get_agent(self):
+        """Lazy loading agent - chỉ khởi tạo khi cần thiết"""
+        if "agent" not in st.session_state:
+            with st.spinner("🔄 Đang khởi tạo AI Agent..."):
+                st.session_state.agent = AgentConversation()
+                st.session_state.agent.tools.extend(discover_and_create_mcp_tools())
+        return st.session_state.agent
 
     def init_gui(self):
         st.title("🎓 Agent Education - AI Giáo dục")
@@ -32,9 +42,8 @@ class GUI:
             with st.chat_message(message["role"]):
                 st.markdown(message["content"])
 
-        # Chat input với key duy nhất dựa trên session
-        chat_key = f"chat_input_{len(st.session_state.messages)}"
-        if prompt := st.chat_input("Hãy hỏi gì đó về giáo dục, học tập hoặc sức khỏe...", key=chat_key):
+        # Chat input với key cố định - KHÔNG thay đổi key
+        if prompt := st.chat_input("Hãy hỏi gì đó về giáo dục, học tập hoặc sức khỏe..."):
             # Thêm tin nhắn người dùng
             st.session_state.messages.append({"role": "user", "content": prompt})
             with st.chat_message("user"):
@@ -55,11 +64,14 @@ class GUI:
         debug_placeholder = st.empty()
 
         try:
+            # Lazy load agent
+            agent = self._get_agent()
+
             full_response = ""
             intermediate_steps = []
 
             # Sử dụng streaming
-            for chunk in self.agent.stream(input=prompt, session_id="streamlit"):
+            for chunk in agent.stream(input=prompt, session_id="streamlit"):
                 if chunk["type"] == "output":
                     # Cập nhật response theo thời gian thực
                     full_response = chunk["full_response"]
@@ -77,7 +89,10 @@ class GUI:
                 elif chunk["type"] == "final":
                     # Kết thúc streaming
                     full_response = chunk["full_response"]
-                    message_placeholder.markdown(full_response)
+
+                    # Container cho response
+                    with message_placeholder.container():
+                        st.markdown(full_response)
 
                     # Hiển thị thông tin debug nếu có
                     if intermediate_steps:
@@ -107,7 +122,9 @@ class GUI:
         """Xử lý phản hồi với invoke mode (truyền thống)"""
         with st.spinner("Đang suy nghĩ..."):
             try:
-                result = self.agent.run(input=prompt, session_id="streamlit")
+                # Lazy load agent
+                agent = self._get_agent()
+                result = agent.run(input=prompt, session_id="streamlit")
 
                 # Lấy phản hồi từ output
                 if "output" in result:
@@ -131,10 +148,6 @@ class GUI:
                 st.session_state.messages.append({"role": "assistant", "content": error_msg})
 
 def run_gui():
-    # Khởi tạo agent chỉ một lần
-    if "agent" not in st.session_state:
-        st.session_state.agent = AgentConversation()
-
-    # Khởi tạo GUI
-    gui = GUI(st.session_state.agent)
+    # Khởi tạo GUI ngay lập tức - KHÔNG khởi tạo agent
+    gui = GUI(agent=None)  # Agent sẽ được lazy load
     gui.init_gui()

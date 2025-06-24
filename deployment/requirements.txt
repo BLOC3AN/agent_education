@@ -26,5 +26,4 @@ fastembed==0.7.1
 pydantic==2.11.7
 python-dotenv==1.1.0
 python_docx==1.2.0
-
-sentence-transformers
+pypandoc==1.15
