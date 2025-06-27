@@ -14,4 +14,4 @@ echo "✅ Permissions fixed successfully"
 
 # Chạy ứng dụng chính
 echo "🚀 Starting Streamlit application..."
-exec streamlit run main.py --server.address 0.0.0.0 --server.enableCORS false --server.enableXsrfProtection false
+uvicorn app:app --port 2222 --reload & streamlit run ./gui/gui.py --server.address 0.0.0.0 --server.enableCORS false --server.enableXsrfProtection false

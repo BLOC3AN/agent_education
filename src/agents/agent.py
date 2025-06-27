@@ -79,7 +79,7 @@ class AgentConversation:
             logger.info(f"⏱️ Agent execution completed in: {end_time - start_time:.4f} seconds")
             logger.info(f"⏱️ LLM invocation time: {end_time - before_invoke:.4f} seconds")
             
-            logger.info(f"📜 Response keys from Agent: {result}")
+            logger.info(f"📜 Response keys from Agent: {result.keys()}")
 
             # Kiểm tra và log intermediate_steps nếu có
             if 'intermediate_steps' in result and result['intermediate_steps']:

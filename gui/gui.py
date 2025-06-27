@@ -1,39 +1,41 @@
 import streamlit as st
-from src.agents.agent import AgentConversation
-from src.tools.get_all_MCP_tools import discover_and_create_mcp_tools
+import requests 
+from typing import Any, Dict
+from src.utils.logger import Logger
+logger=Logger(__name__)
 
-
+# --- Cấu hình chung ---
 # Cấu hình page chỉ chạy một lần
 if "page_config_set" not in st.session_state:
     st.set_page_config(page_title="Agent Education", page_icon="🎓")
     st.session_state.page_config_set = True
 
-class GUI:
-    def __init__(self, agent=None):
-        self.agent = agent
+# Định nghĩa URL của Agent FastAPI của bạn
+# Đảm bảo Agent FastAPI đang chạy tại địa chỉ và cổng này
+AGENT_API_URL = "http://localhost:2222/agent/request"
 
-    def _get_agent(self):
-        """Lazy loading agent - chỉ khởi tạo khi cần thiết"""
-        if "agent" not in st.session_state:
-            with st.spinner("🔄 Đang khởi tạo AI Agent..."):
-                st.session_state.agent = AgentConversation()
-                st.session_state.agent.tools.extend(discover_and_create_mcp_tools())
-        return st.session_state.agent
+# --- Lớp GUI ---
+class GUI:
+    def __init__(self):
+        # Không cần khởi tạo AgentConversation ở đây nữa vì nó là dịch vụ FastAPI riêng
+        pass
 
     def init_gui(self):
+        """Khởi tạo giao diện người dùng chính của Streamlit."""
         st.title("🎓 Agent Education - AI Giáo dục")
         st.markdown("*Hệ thống AI hỗ trợ giáo dục và tư vấn học tập*")
 
-        # Sidebar để chọn mode
+        # Sidebar để chọn mode và các tùy chọn khác
         with st.sidebar:
             st.header("⚙️ Cài đặt")
-            streaming_mode = st.toggle("🔄 Streaming Mode", value=True, help="Bật để xem phản hồi theo thời gian thực")
+            # Nút toggle cho chế độ streaming (chỉ là giao diện, logic thực tế sẽ nhận full response)
+            streaming_mode = st.toggle("🔄 Streaming Mode", value=True, help="Bật để hiển thị hiệu ứng 'đang suy nghĩ' và đợi phản hồi đầy đủ. (Lưu ý: API hiện tại không hỗ trợ streaming từng token)")
 
             if st.button("🗑️ Xóa lịch sử chat"):
                 st.session_state.messages = []
-                st.rerun()
+                st.rerun() # Làm mới lại ứng dụng để xóa lịch sử
 
-        # Khởi tạo session state cho messages
+        # Khởi tạo session state cho messages nếu chưa có
         if "messages" not in st.session_state:
             st.session_state.messages = []
 
@@ -42,112 +44,113 @@ class GUI:
             with st.chat_message(message["role"]):
                 st.markdown(message["content"])
 
-        # Chat input với key cố định - KHÔNG thay đổi key
+        # Ô nhập liệu cho người dùng
+        # Sử dụng st.chat_input để có giao diện nhập liệu đẹp và tự động lưu trạng thái
         if prompt := st.chat_input("Hãy hỏi gì đó về giáo dục, học tập hoặc sức khỏe..."):
-            # Thêm tin nhắn người dùng
+            # Thêm tin nhắn người dùng vào lịch sử chat
             st.session_state.messages.append({"role": "user", "content": prompt})
             with st.chat_message("user"):
                 st.markdown(prompt)
 
-            # Xử lý phản hồi từ AI
+            # Xử lý phản hồi từ AI Agent (gọi API)
             with st.chat_message("assistant"):
                 if streaming_mode:
-                    # Sử dụng streaming mode
-                    self._handle_streaming_response(prompt)
+                    self._handle_response_via_api_with_spinner(prompt)
                 else:
-                    # Sử dụng invoke mode (truyền thống)
-                    self._handle_invoke_response(prompt)
+                    self._handle_response_via_api_direct(prompt)
 
-    def _handle_streaming_response(self, prompt):
-        """Xử lý phản hồi với streaming mode"""
-        message_placeholder = st.empty()
-        debug_placeholder = st.empty()
+    def _call_agent_api(self, user_input: str):
+        """
+        Gửi yêu cầu HTTP POST đến Agent FastAPI và trả về phản hồi.
+        """
+        try:
+            payload = {"input": user_input} # Dữ liệu cần gửi trong body của POST request
+
+            # Gửi POST request đến Agent API
+            response = requests.post(AGENT_API_URL, json=payload, timeout=60) # Thêm timeout
+            response.raise_for_status() # Ném HTTPError cho mã trạng thái lỗi (4xx hoặc 5xx)
+
+            # Phân tích phản hồi JSON từ Agent
+            return response.json()
+
+        except requests.exceptions.Timeout:
+            return {"error": "API Timeout: Agent không phản hồi kịp thời."}
+        except requests.exceptions.ConnectionError:
+            return {"error": "Lỗi kết nối: Không thể kết nối tới Agent API. Đảm bảo Agent đang chạy."}
+        except requests.exceptions.HTTPError as e:
+            return {"error": f"Lỗi HTTP từ Agent: {e.response.status_code} - {e.response.text}"}
+        except requests.exceptions.RequestException as e:
+            return {"error": f"Lỗi yêu cầu: {e}"}
+        except Exception as e:
+            return {"error": f"Lỗi không xác định khi gọi API: {e}"}
+
+    def _handle_response_via_api_with_spinner(self, prompt):
+        """
+        Xử lý phản hồi bằng cách gọi API, hiển thị spinner và update đầy đủ khi có kết quả.
+        (Mô phỏng "streaming" nhưng thực tế là chờ full response từ API).
+        """
+        message_placeholder = st.empty() # Placeholder để cập nhật tin nhắn
+        debug_placeholder = st.empty() # Placeholder cho debug/loading info
+
+        message_placeholder.markdown("🤔 Agent đang suy nghĩ... ")
+        debug_placeholder.info("Đang chờ phản hồi từ Agent API...")
 
         try:
-            # Lazy load agent
-            agent = self._get_agent()
+            api_result = self._call_agent_api(prompt)
+            logger.info(f"Result from agent : {api_result.keys()}")
 
-            full_response = ""
-            intermediate_steps = []
+            if "error" in api_result:
+                full_response = f"❌ Lỗi: {api_result['error']}"
+                message_placeholder.error(full_response)
+                debug_placeholder.empty() # Xóa debug placeholder
+            else:
+                # Giả sử Agent FastAPI trả về {"response": "..."}
+                response_content = api_result.get("response", "Không nhận được phản hồi hợp lệ từ Agent.")
+                full_response:Any|Dict = response_content
+                with message_placeholder.container():
+                    st.markdown(full_response['output']) # Hiển thị toàn bộ phản hồi
 
-            # Sử dụng streaming
-            for chunk in agent.stream(input=prompt, session_id="streamlit"):
-                if chunk["type"] == "output":
-                    # Cập nhật response theo thời gian thực
-                    full_response = chunk["full_response"]
-                    message_placeholder.markdown(full_response + "▌")
+                debug_placeholder.empty() # Xóa debug placeholder sau khi có kết quả
 
-                elif chunk["type"] == "intermediate_step":
-                    # Lưu intermediate steps để hiển thị sau
-                    intermediate_steps.extend(chunk["content"])
-
-                elif chunk["type"] == "action":
-                    # Hiển thị action đang thực hiện
-                    with debug_placeholder.container():
-                        st.info(f"🔧 Đang thực hiện: {chunk['content']}")
-
-                elif chunk["type"] == "final":
-                    # Kết thúc streaming
-                    full_response = chunk["full_response"]
-
-                    # Container cho response
-                    with message_placeholder.container():
-                        st.markdown(full_response)
-
-                    # Hiển thị thông tin debug nếu có
-                    if intermediate_steps:
-                        with debug_placeholder.expander("🔧 Chi tiết xử lý"):
-                            for i, step in enumerate(intermediate_steps):
-                                st.write(f"**Bước {i+1}:** {step}")
-                    else:
-                        debug_placeholder.empty()
-
-                    # Lưu vào session state
-                    st.session_state.messages.append({"role": "assistant", "content": full_response})
-                    break
-
-                elif chunk["type"] == "error":
-                    # Xử lý lỗi
-                    error_msg = f"❌ Đã xảy ra lỗi: {chunk['content']}"
-                    message_placeholder.error(error_msg)
-                    st.session_state.messages.append({"role": "assistant", "content": error_msg})
-                    break
+            # Thêm phản hồi vào lịch sử chat
+            st.session_state.messages.append({"role": "assistant", "content": full_response['output']})
 
         except Exception as e:
-            error_msg = f"❌ Đã xảy ra lỗi không mong muốn: {str(e)}"
+            error_msg = f"❌ Đã xảy ra lỗi không mong muốn trong Streamlit: {str(e)}"
             message_placeholder.error(error_msg)
+            debug_placeholder.empty()
             st.session_state.messages.append({"role": "assistant", "content": error_msg})
 
-    def _handle_invoke_response(self, prompt):
-        """Xử lý phản hồi với invoke mode (truyền thống)"""
+
+    def _handle_response_via_api_direct(self, prompt):
+        """
+        Xử lý phản hồi bằng cách gọi API và hiển thị kết quả trực tiếp (không có hiệu ứng streaming).
+        """
         with st.spinner("Đang suy nghĩ..."):
             try:
-                # Lazy load agent
-                agent = self._get_agent()
-                result = agent.run(input=prompt, session_id="streamlit")
-
-                # Lấy phản hồi từ output
-                if "output" in result:
-                    response = result["output"]
+                api_result = self._call_agent_api(prompt)
+            
+                if "error" in api_result:
+                    response_content = f"❌ Lỗi: {api_result['error']}"
+                    st.error(response_content)
                 else:
-                    response = "Xin lỗi, tôi không thể xử lý câu hỏi này lúc này."
+                    # Giả sử Agent FastAPI trả về {"response": "..."}
+                    response_content = api_result.get("response", "Không nhận được phản hồi hợp lệ từ Agent.")
+                    st.markdown(response_content)
 
-                # Hiển thị phản hồi
-                st.markdown(response)
-                st.session_state.messages.append({"role": "assistant", "content": response})
-
-                # Hiển thị thông tin debug nếu có intermediate_steps
-                if "intermediate_steps" in result and result["intermediate_steps"]:
-                    with st.expander("🔧 Chi tiết xử lý"):
-                        for i, step in enumerate(result["intermediate_steps"]):
-                            st.write(f"**Bước {i+1}:** {step}")
+                # Thêm phản hồi vào lịch sử chat
+                st.session_state.messages.append({"role": "assistant", "content": response_content})
 
             except Exception as e:
-                error_msg = f"❌ Đã xảy ra lỗi: {str(e)}"
+                error_msg = f"❌ Đã xảy ra lỗi không mong muốn trong Streamlit: {str(e)}"
                 st.error(error_msg)
                 st.session_state.messages.append({"role": "assistant", "content": error_msg})
 
+# --- Hàm chạy ứng dụng Streamlit ---
 def run_gui():
-    # Khởi tạo GUI ngay lập tức - KHÔNG khởi tạo agent
-    gui = GUI(agent=None)  # Agent sẽ được lazy load
+    gui = GUI()
     gui.init_gui()
+
+# --- Điểm bắt đầu của ứng dụng ---
+if __name__ == "__main__":
+    run_gui()
