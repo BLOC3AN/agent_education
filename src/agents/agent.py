@@ -5,7 +5,6 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from src.memory.memortConverSasion import MemoryConversation
 from src.utils.redis_client import RedisClient
 
-from src.tools.retrieve import retrieve_data
 import time
 
 from src.utils.logger import Logger
@@ -35,7 +34,7 @@ class AgentConversation:
         self.HANDLE_PARSING_ERRORS = True
         self.VERBOSE = True
 
-        self.tools = [retrieve_data]
+        self.tools = []
 
         self.prompt = get_prompt_conversation()
         logger.info(f"📑 System prompt loaded")     
