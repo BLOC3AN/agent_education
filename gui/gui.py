@@ -107,9 +107,11 @@ class GUI:
                 # Giả sử Agent FastAPI trả về {"response": "..."}
                 response_content = api_result.get("response", "Không nhận được phản hồi hợp lệ từ Agent.")
                 full_response:Any|Dict = response_content
-                with message_placeholder.container():
-                    st.markdown(full_response['output']) # Hiển thị toàn bộ phản hồi
-
+                if isinstance(full_response, dict) and "output" in full_response:
+                    with message_placeholder.container():
+                        st.markdown(full_response['output']) # Hiển thị toàn bộ phản hồi
+                else:
+                    message_placeholder.warning(f"⚠️ Agent phản hồi không có định dạng mong đợi: {full_response}")
                 debug_placeholder.empty() # Xóa debug placeholder sau khi có kết quả
 
             # Thêm phản hồi vào lịch sử chat
@@ -127,7 +129,7 @@ class GUI:
         Xử lý phản hồi bằng cách gọi API và hiển thị kết quả trực tiếp (không có hiệu ứng streaming).
         """
         with st.spinner("Đang suy nghĩ..."):
-            try:
+            try:    
                 api_result = self._call_agent_api(prompt)
             
                 if "error" in api_result:
