@@ -3,6 +3,7 @@ from src.utils.logger import Logger
 logger = Logger(__name__)
 from langchain_core.tools import tool, Tool
 from sentence_transformers import CrossEncoder
+import os
 
 class RetrieveData:
     def __init__(self):
@@ -39,7 +40,7 @@ def retrieve_data_giao_an(query_text: str,limit: int = 3):
     If collection_name is not provided, the tool will attempt to infer the best collection
     from the available ones.
     """
-   collection_name="giao_an_collection"
+   collection_name=os.getenv("COLLECTION_GIAO_AN","giao_an_collection")
    retrieve_data = RetrieveData()
    results = retrieve_data.retrieve(collection_name, query_text, limit)
    logger.info(f"Retrieved results from collection {collection_name}")

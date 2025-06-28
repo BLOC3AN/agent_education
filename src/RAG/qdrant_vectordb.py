@@ -7,8 +7,8 @@ import uuid
 
 class QdrantVectorDB:
     def __init__(self):
-        self.url = os.getenv("QDRANT_CLOUD_URL", "https://7d15f4c4-01e3-4591-9106-b0705066ced5.us-east4-0.gcp.cloud.qdrant.io:6333")
-        self.api_key=os.getenv("QDRANT_API_KEY","eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIn0.PYruiZBuq5YU8QlT92Bs0snsnrgZmth2vekIqiPYK50")
+        self.url = os.getenv("QDRANT_CLOUD_URL")
+        self.api_key=os.getenv("QDRANT_API_KEY")
         self.client = QdrantClient(url=self.url, api_key=self.api_key)
         self.vector_name = "dense"
         self.model_emmbedding = "BAAI/bge-small-en"
