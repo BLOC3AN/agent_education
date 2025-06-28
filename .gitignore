@@ -198,5 +198,4 @@ cython_debug/
 data/
 
 
-deployment/
-cache/
+deployment/cache/*
