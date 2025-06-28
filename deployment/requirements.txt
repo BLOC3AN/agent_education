@@ -28,4 +28,5 @@ python-dotenv==1.1.0
 python_docx==1.2.0
 pypandoc==1.15
 
-fastapi
+sentence_transformers==4.1.0
+fastapi==0.110.2

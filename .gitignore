@@ -196,3 +196,7 @@ cython_debug/
 .rdb
 
 data/
+
+
+deployment/
+cache/

@@ -17,6 +17,8 @@ services:
       - ../gui:/app/gui:ro
       - ../main.py:/app/main.py:ro
       - ../data/agent_data:/app/data/agent_data:rw
+      # huggin face
+      - ../deployment/cache/huggingface:/home/appuser/.cache/huggingface
       # Logs volume
       - agent-logs:/app/logs
     restart: unless-stopped
