@@ -66,13 +66,14 @@ class AgentConversation:
                 early_stopping_method=self.EARLY_STOPPING_METHOD,
                 max_execution_time=self.MAX_EXECUTION_TIME,
                 handle_parsing_errors=self.HANDLE_PARSING_ERRORS,
+                return_intermediate_steps=True,
             )
             logger.info("✅ Conversation Agent created successfully")
             
             before_invoke = time.time()
             logger.info(f"⏱️ Time to create agent: {before_invoke - start_time:.4f} seconds")
 
-            result = agent_executor.invoke({ "input": f"{input}", "chat_history": memory, })
+            result = agent_executor.invoke({ "input": f"{input}", "chat_history": memory, },return_intermediate_steps=True)
             
             end_time = time.time()
             logger.info(f"⏱️ Agent execution completed in: {end_time - start_time:.4f} seconds")
@@ -116,6 +117,7 @@ class AgentConversation:
                 max_iterations=self.MAX_ITERATIONS,
                 max_execution_time=self.MAX_EXECUTION_TIME,
                 handle_parsing_errors=self.HANDLE_PARSING_ERRORS,
+                return_intermediate_steps=True,
             )
             logger.info("✅ Conversation Agent created successfully for streaming")
 
@@ -124,7 +126,7 @@ class AgentConversation:
 
             # Sử dụng stream thay vì invoke
             full_response = ""
-            for chunk in agent_executor.stream({"input": f"{input}", "chat_history": memory}):
+            for chunk in agent_executor.stream({"input": f"{input}", "chat_history": memory},return_intermediate_steps=True):
                 if "output" in chunk:
                     # Yield từng phần của output
                     chunk_text = chunk["output"]
