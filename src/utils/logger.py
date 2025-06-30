@@ -18,11 +18,11 @@ class Logger:
             file_handler.setFormatter(formatter)
             self.logger.addHandler(file_handler)
     
-    def info(self, message):
-        self.logger.info("✅ "+message)
-    def error(self, message):
-        self.logger.error("❌ "+message)
-    def debug(self, message):
-        self.logger.debug("🔥 "+message)
-    def warning(self, message):
-        self.logger.warning("⚠️ "+message)
+    def info(self, message, **kwangs):
+        self.logger.info("✅ "+message+str(**kwangs))
+    def error(self, message,**kwangs):
+        self.logger.error("❌ "+message+str(**kwangs))
+    def debug(self, message,**kwangs):
+        self.logger.debug("🔥 "+message+str(**kwangs))
+    def warning(self, message,**kwangs):
+        self.logger.warning("⚠️ "+message+str(**kwangs))

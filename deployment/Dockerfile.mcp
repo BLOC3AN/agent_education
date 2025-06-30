@@ -9,10 +9,21 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Cài đặt Python dependencies
-RUN pip install --no-cache-dir fastapi uvicorn python-dotenv langchain_core==0.3.65 langchain==0.3.25 pydantic pypandoc==1.15
+RUN pip install --no-cache-dir fastapi \
+    uvicorn \
+    python-dotenv \
+    langchain_core==0.3.65 \
+    langchain==0.3.25 \
+    pydantic \
+    pypandoc==1.15 \
+    google-api-python-client==2.172.0 \
+    google-auth-httplib2==0.2.0 \
+    google-auth-oauthlib==1.2.2 
 
 # Copy source code
 COPY src/ ./src/
+# Copy source code
+COPY env/ ./env/
 
 EXPOSE 9099
 

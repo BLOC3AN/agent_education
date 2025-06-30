@@ -5,3 +5,7 @@ python-dotenv==1.1.0
 python_docx==1.2.0
 qdrant_client==1.14.3
 streamlit==1.46.0
+#google
+google-api-python-client==2.172.0
+google-auth-httplib2==0.2.0
+google-auth-oauthlib==1.2.2
