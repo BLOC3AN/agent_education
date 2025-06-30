@@ -1,82 +1,86 @@
 from langchain.tools import BaseTool
 from typing import List, Dict, Any, Optional
+from pydantic import create_model, BaseModel
 import requests
-from src.utils.logger import Logger
-import json
 import os
+import json
+from src.utils.logger import Logger
+
 logger = Logger(__name__)
 
+# ---------- Settings ----------
 class Settings:
     def __init__(self):
-        # Load environment variables with defaults
         self.mcp_server_url = os.getenv("MCP_SERVER_URL", "http://mcp-server:9099")
-# Create settings instance
+
 settings = Settings()
 
+# ---------- Helper: Convert schema dict to Pydantic model ----------
+def create_pydantic_model_from_schema(name: str, schema_dict: Dict[str, Any]) -> BaseModel:
+    fields = {}
+    props = schema_dict.get("properties", {})
+    required = schema_dict.get("required", [])
 
+    for field_name, prop in props.items():
+        field_type = str  # default
+        if prop.get("type") == "integer":
+            field_type = int
+        elif prop.get("type") == "number":
+            field_type = float
+        elif prop.get("type") == "boolean":
+            field_type = bool
+        elif prop.get("type") == "array":
+            field_type = list
+        elif prop.get("type") == "object":
+            field_type = dict
+
+        is_required = field_name in required
+        fields[field_name] = (field_type, ...) if is_required else (Optional[field_type], None)
+
+    return create_model(name + "Args", **fields) # type: ignore
+
+# ---------- Tool class ----------
 class MCPTool(BaseTool):
     """
-    Một lớp BaseTool của LangChain đại diện cho một tool được khám phá từ MCP Service.
+    Một tool LangChain được gọi qua MCP Service.
     """
-    name: str = "mcp_booking_tool"
-    description: str = "Tool được khám phá thông qua MCP Service"
+    name: str = "mcp_tool"
+    description: str = "Tool được gọi qua MCP"
     endpoint: str
     token: str
     user_id: str
-    
-    
+
     def _run(self, tool_input: Optional[Dict[str, Any]] = None, **kwargs) -> str:
         headers = {"Content-Type": "application/json"}
         full_url = f"{settings.mcp_server_url}{self.endpoint}"
-        
+
         logger.info(f"🔧 MCPTool '{self.name}' called with endpoint: {self.endpoint}")
         logger.info(f"🔗 Full URL: {full_url}")
-        
+
         try:
-            # Log the incoming parameters
-            logger.info(f"📥 Tool input type: {type(tool_input)}")
-            logger.info(f"📥 Tool input: {tool_input}")
-            logger.info(f"📥 kwargs keys: {list(kwargs.keys())}")
-            
-            payload = tool_input if tool_input is not None else kwargs
+            payload = tool_input if tool_input else kwargs
             if not isinstance(payload, dict):
-                logger.error(f"⚠️ Invalid payload type: {type(payload)}")
-                return f"⚠️ MCPTool expects a dictionary input but got: {type(payload)}"
-            
-            # Log the payload before context addition
-            logger.info(f"📦 Initial payload keys: {list(payload.keys())}")
-            
+                return f"⚠️ Invalid input: expected dict, got {type(payload)}"
+
             payload['token'] = self.token
             payload['user_id'] = self.user_id
-            
-            # Log the final payload
-            logger.info(f"📦 Final payload keys: {list(payload.keys())}")
-            
-            # Log request details
-            logger.info(f"🚀 Sending request to MCP endpoint: {self.endpoint}")
-            
+
+            logger.info(f"📦 Final payload: {json.dumps(payload, indent=2, ensure_ascii=False)}")
             response = requests.post(full_url, json=payload, headers=headers)
-            logger.info(f"📡 Response status code: {response.status_code}")
-            
             response.raise_for_status()
-            
+
             result = response.json()
-            logger.info(f"✅ Received successful response from MCP {result}")
-            
+            logger.info(f"✅ Received response from MCP: {result}")
             return json.dumps(result, ensure_ascii=False)
 
-        except requests.exceptions.HTTPError as http_err:
-            logger.error(f"❌ HTTP error: {str(http_err)}")
-            return f"❌ HTTP error: {str(http_err)}"
-        except Exception as e:
-            logger.error(f"❌ MCPTool Error: {str(e)}")
-            import traceback
-            logger.error(f"❌ Traceback: {traceback.format_exc()}")
-            return f"❌ MCPTool Error: {str(e)}"
+        except requests.exceptions.RequestException as e:
+            logger.error(f"❌ Request error: {str(e)}")
+            return f"❌ MCPTool error: {str(e)}"
 
+# ---------- Main discover function ----------
 def discover_and_create_mcp_tools(token: str = "", user_id: str = "") -> List[BaseTool]:
     """
-    Khám phá các tools từ MCP Service và tạo các đối tượng BaseTool của LangChain.
+    Tự động fetch MCP capabilities và convert thành LangChain Tool.
     """
     headers = {"Content-Type": "application/json"}
     capabilities_url = f"{settings.mcp_server_url}/capabilities"
@@ -85,56 +89,40 @@ def discover_and_create_mcp_tools(token: str = "", user_id: str = "") -> List[Ba
         response = requests.get(capabilities_url, headers=headers)
         response.raise_for_status()
         capabilities = response.json()
-        logger.info(f"Capabilities discovered: {[cap['mcp_schema'].get('name', 'unknown') for cap in capabilities]}")
+        logger.info(f"✅ Capabilities discovered: {[cap['mcp_schema'].get('name', 'unknown') for cap in capabilities]}")
     except requests.exceptions.RequestException as e:
-        logger.error(f"Error discovering MCP capabilities: {e}")
+        logger.error(f"❌ Error discovering MCP capabilities: {e}")
         return []
 
-    langchain_tools = []
-    for capability in capabilities:
+    tools = []
+    for cap in capabilities:
         try:
-            schema = capability['mcp_schema']
-            # Log the full schema structure to debug
-            logger.info(f"Schema structure keys: {list(schema.keys())}")
-            
-            name = schema.get("name")
-            description = schema.get("description")
-            
-            # Check if endpoint exists and has the expected structure
+            schema = cap.get("mcp_schema", {})
+            name = schema.get("name", "unnamed_tool")
+            description = schema.get("description", f"Auto-discovered MCP tool: {name}")
+
             if "endpoint" not in schema or "url" not in schema["endpoint"]:
-                logger.error(f"Missing endpoint or url in schema for {name}")
+                logger.warning(f"⚠️ Missing endpoint.url for tool: {name}")
                 continue
-                
             endpoint = schema["endpoint"]["url"]
-            
-            # Get args_schema if it exists
-            args_schema = schema.get("args_schema")
-            if not args_schema:
-                logger.warning(f"Missing args_schema for {name}, using default empty schema")
-                args_schema = {
-                    "type": "object",
-                    "properties": {}
-                }
-            
-            logger.info(f"Creating tool: {name} with endpoint {endpoint}")
-            
-            mcp_tool_instance = MCPTool(
-                name=name, 
+
+            raw_args_schema = schema.get("args_schema", {"type": "object", "properties": {}})
+            pydantic_args_model = create_pydantic_model_from_schema(name, raw_args_schema)
+
+            tool = MCPTool(
+                name=name,
                 description=description,
-                args_schema=args_schema,
+                args_schema=pydantic_args_model, # type: ignore
                 endpoint=endpoint,
                 token=token,
                 user_id=user_id
             )
-            langchain_tools.append(mcp_tool_instance)
-            
-        except KeyError as ke:
-            logger.error(f"Missing required key in capability schema: {ke}")
-            logger.error(f"Schema content: {capability.get('mcp_schema', {})}")
-            continue
+            tools.append(tool)
+            logger.info(f"✅ Created MCPTool: {name}")
+
         except Exception as e:
-            logger.error(f"Error creating tool from capability: {e}")
+            logger.error(f"❌ Failed to load tool '{cap}': {e}")
             continue
 
-    logger.info(f"Discovered {len(langchain_tools)} tools from MCP Service.")
-    return langchain_tools
+    logger.info(f"✅ Total MCP tools created: {len(tools)}")
+    return tools

@@ -74,22 +74,22 @@ async def get_capabilities():
 
 @app.post("/tools/convert_md_to_docx",
           summary="Convert markdown content to docx file with template",
-          dependencies=[])
-async def convert_md_to_docx(input:Dict):
+          )
+async def convert_md_to_docx(content_markdown:Dict):
     logger.info("Converting markdown content to docx file")
-    logger.info(f"Input: {input}")
+    logger.info(f"content_markdown: {content_markdown}")
 
-    # Validate input
-    if not input.get("message"):
+    # Validate content_markdown
+    if not content_markdown.get("message"):
         return {"status": "error", "error": "Missing 'message' field"}
 
     # Extract parameters
-    message = input["message"]
-    output_filename = input.get("output_filename", None)
+    message = content_markdown["message"]
+    output_filename = content_markdown.get("output_filename", None)
 
     # Handle backward compatibility với output_path
-    if not output_filename and "output_path" in input:
-        output_path = input["output_path"]
+    if not output_filename and "output_path" in content_markdown:
+        output_path = content_markdown["output_path"]
         # Extract filename from path
         if "/" in output_path:
             output_filename = output_path.split("/")[-1]
@@ -99,7 +99,7 @@ async def convert_md_to_docx(input:Dict):
         if output_filename.endswith('.docx'):
             output_filename = output_filename[:-5]
 
-    user_id = input.get("user_id", "default_user")
+    user_id = content_markdown.get("user_id", "default_user")
 
     # Add user_id to filename if provided
     if user_id and user_id != "default_user":

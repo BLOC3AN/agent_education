@@ -27,7 +27,7 @@ def convert_md_to_docx_with_template(message, output_filename=None, output_dir:s
 
     try:
         # Convert markdown to docx
-        output = pypandoc.convert_text(
+        pypandoc.convert_text(
             source=message,
             to='docx',
             format='md',
