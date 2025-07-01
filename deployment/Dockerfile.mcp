@@ -18,7 +18,10 @@ RUN pip install --no-cache-dir fastapi \
     pypandoc==1.15 \
     google-api-python-client==2.172.0 \
     google-auth-httplib2==0.2.0 \
-    google-auth-oauthlib==1.2.2 
+    google-auth-oauthlib==1.2.2 \
+    markdown==3.5.1 \
+    beautifulsoup4==4.12.2 \
+    python_docx==1.2.0
 
 # Copy source code
 COPY src/ ./src/

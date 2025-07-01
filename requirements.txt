@@ -2,9 +2,11 @@ langchain==0.3.25
 langchain_core==0.3.65
 pydantic==2.11.7
 python-dotenv==1.1.0
-python_docx==1.2.0
+python-docx==1.0.1
 qdrant_client==1.14.3
 streamlit==1.46.0
+beautifulsoup4==4.12.2
+markdown==3.5.1
 #google
 google-api-python-client==2.172.0
 google-auth-httplib2==0.2.0

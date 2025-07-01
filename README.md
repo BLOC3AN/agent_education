@@ -14,46 +14,56 @@ Agent Education là một hệ thống AI đa tác vụ được thiết kế đ
 - **Embedding tài liệu**: Xử lý và vector hóa tài liệu giáo dục (.docx)
 - **Vector search**: Tìm kiếm ngữ nghĩa với Qdrant vector database
 
-## 🏗️ Kiến trúc hệ thống
+## 🏗️ Cấu trúc thư mục
 
 ```
 agent_education/
-├── src/
-│   ├── agents/                    # AI Agent
-│   │   └── agent.py              # Agent hội thoại chính
-│   ├── llms/                     # Tích hợp mô hình ngôn ngữ
-│   │   └── gemini.py            # Google Gemini LLM
-│   ├── RAG/                     # Retrieval-Augmented Generation
-│   │   ├── embedded_data.py     # Xử lý embedding tài liệu
-│   │   └── qdrant_vectordb.py   # Qdrant vector database
-│   ├── memory/                  # Quản lý bộ nhớ hội thoại
-│   │   ├── memortConverSasion.py # Memory conversation
-│   │   ├── redis_memory.py      # Redis memory integration
+├── src/                        # Mã nguồn chính
+│   ├── agents/                 # Các AI Agent
+│   │   └── agent.py           # Agent hội thoại chính
+│   ├── llms/                   # Tích hợp mô hình ngôn ngữ
+│   │   └── gemini.py          # Google Gemini LLM
+│   ├── RAG/                    # Retrieval-Augmented Generation
+│   │   ├── embedded_data.py    # Xử lý embedding tài liệu
+│   │   └── qdrant_vectordb.py  # Qdrant vector database
+│   ├── memory/                 # Quản lý bộ nhớ hội thoại
+│   │   ├── memortConverSasion.py  # Memory conversation
+│   │   ├── redis_memory.py     # Redis memory integration
 │   │   └── redis_summaryMemory.py # Redis summary memory
-│   ├── prompts/                 # Template prompt cho agent
-│   │   └── conversation_agent.md
-│   ├── tools/                   # Công cụ hỗ trợ
-│   │   └── retrieve.py          # Tool tìm kiếm thông tin
-│   ├── utils/                   # Tiện ích hỗ trợ
+│   ├── prompts/                # Template prompt cho agent
+│   │   └── conversation_agent.md  # Prompt chính cho agent
+│   ├── tools/                  # Công cụ hỗ trợ
+│   │   ├── retrieve.py         # Tool tìm kiếm thông tin
+│   │   └── get_all_MCP_tools.py # Tool tìm kiếm MCP tools
+│   ├── utils/                  # Tiện ích hỗ trợ
 │   │   ├── logger.py           # Hệ thống logging
 │   │   └── redis_client.py     # Redis client cho caching
-│   ├── config/                  # Cấu hình hệ thống (trống)
-│   └── MCP/                    # Model Context Protocol (trống)
+│   ├── config/                 # Cấu hình hệ thống
+│   └── MCP/                    # Model Context Protocol
+│       ├── server.py           # MCP server
+│       └── schema/             # Schema cho MCP tools
 ├── data/                       # Dữ liệu và storage
-│   ├── RAG/                   # Tài liệu giáo dục (.docx)
-│   ├── qdrant/                # Qdrant vector storage
-│   └── redis/                 # Redis cache storage
+│   ├── RAG/                    # Tài liệu giáo dục (.docx)
+│   ├── qdrant/                 # Qdrant vector storage
+│   └── redis/                  # Redis cache storage
 ├── deployment/                 # Docker deployment
-│   ├── docker-compose.yml     # Multi-service orchestration
-│   ├── Dockerfile.agent       # Main application container
-│   ├── Dockerfile.emmbed      # Embedding service container
-│   └── requirements.txt       # Python dependencies
-├── gui/                       # Streamlit web interface
-│   └── gui.py                # Web GUI implementation
-├── notebook/                  # Jupyter notebooks cho R&D
-├── docs/                      # Tài liệu dự án
-├── emmbed_data.py            # Script embedding tài liệu
-└── main.py                   # Entry point chính
+│   ├── docker-compose.yml      # Multi-service orchestration
+│   ├── Dockerfile.agent        # Main application container
+│   ├── Dockerfile.emmbed       # Embedding service container
+│   ├── Dockerfile.mcp          # MCP service container
+│   └── entrypoint.sh           # Script khởi động
+├── gui/                        # Streamlit web interface
+│   └── gui.py                  # Web GUI implementation
+├── notebook/                   # Jupyter notebooks cho R&D
+│   ├── emmbed_data.ipynb       # Notebook xử lý embedding
+│   └── redis.ipynb             # Notebook thử nghiệm Redis
+├── docs/                       # Tài liệu dự án
+│   └── STREAMING_GUIDE.md      # Hướng dẫn streaming
+├── tunel/                      # Cloudflare tunnel
+│   └── README.md               # Hướng dẫn cấu hình tunnel
+├── emmbed_data.py              # Script embedding tài liệu
+├── app.py                      # FastAPI server
+└── main.py                     # Entry point chính
 ```
 
 ## ✨ Tính năng chính
@@ -78,7 +88,7 @@ agent_education/
 - **Xử lý lỗi thông minh**: Retry mechanism và error handling
 
 ### 🐳 Docker Deployment
-- **Multi-service Architecture**: Agent, Qdrant, Redis, Embedding service
+- **Multi-service Architecture**: Agent, Qdrant, Redis, Embedding service, MCP service
 - **Container Orchestration**: Docker Compose với health checks
 - **Scalable Design**: Có thể mở rộng theo nhu cầu
 - **Production Ready**: Cấu hình bảo mật và tối ưu hiệu suất
@@ -87,7 +97,7 @@ agent_education/
 - **Streamlit GUI**: Giao diện web thân thiện và responsive
 - **Real-time Chat**: Chat interface với streaming responses
 - **File Upload**: Upload và xử lý tài liệu giáo dục
-- **History Management**: Quản lý lịch sử hội thoại
+- **Document Download**: Tải xuống tài liệu dưới dạng DOCX từ mọi tin nhắn
 
 ### 📊 Monitoring và Logging
 - **Comprehensive Logging**: Theo dõi chi tiết hoạt động của hệ thống
@@ -147,6 +157,7 @@ docker-compose logs -f
 - **Web Interface**: http://localhost:8501
 - **Qdrant Dashboard**: http://localhost:6333/dashboard
 - **Redis**: localhost:6379
+- **MCP Server**: http://localhost:9099
 
 ### 💻 Development Setup
 
@@ -162,6 +173,9 @@ docker-compose up qdrant redis -d
 
 # Chạy embedding process
 python emmbed_data.py
+
+# Chạy MCP server
+python -m uvicorn src.MCP.server:app --host 0.0.0.0 --port 9099
 
 # Chạy main application
 python main.py
@@ -233,7 +247,7 @@ for point in results.points:
 1. Truy cập http://localhost:8501
 2. Nhập câu hỏi trong chat interface
 3. Xem phản hồi streaming real-time
-4. Upload tài liệu mới để mở rộng knowledge base
+4. Tải xuống bất kỳ tin nhắn nào của assistant dưới dạng file Word
 
 ## 🔧 Cấu hình chi tiết
 
@@ -291,6 +305,10 @@ qdrant:
 redis:
   ports: [6379]
   persistence: enabled
+
+mcp:
+  ports: [9099]
+  depends_on: [agent-education]
 ```
 
 ## 🚨 Troubleshooting
@@ -329,6 +347,15 @@ docker stats
 memory: 16G  # thay vì 10G
 ```
 
+**4. Nút tải xuống không hiển thị**
+```bash
+# Kiểm tra logs của Streamlit
+docker logs agent-education
+
+# Restart Streamlit service
+docker-compose restart agent-education
+```
+
 ## 📈 Roadmap phát triển
 
 ### ✅ Đã hoàn thành
@@ -339,6 +366,7 @@ memory: 16G  # thay vì 10G
 - [x] **Web Interface**: Streamlit GUI với streaming
 - [x] **Memory Management**: Redis memory với multiple types
 - [x] **Document Processing**: Embedding tài liệu .docx
+- [x] **Document Download**: Tải xuống tài liệu từ mọi tin nhắn
 
 ### 🔄 Đang phát triển
 - [ ] **Split-Task Agent**: Agent chia nhỏ nhiệm vụ phức tạp
