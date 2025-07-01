@@ -1,0 +1,34 @@
+# Optimized requirements for AWS Free Tier
+# Core dependencies only - reduced memory footprint
+
+# LangChain - Core only, no extras
+langchain-core==0.3.65
+pydantic==2.11.7
+
+# Environment and configuration
+python-dotenv==1.1.0
+
+# Document processing - lightweight
+python-docx==1.0.1
+
+# Vector database client - Qdrant Cloud
+qdrant-client==1.14.3
+
+# Web framework - Streamlit with minimal config
+streamlit==1.46.0
+
+# Text processing - essential only
+beautifulsoup4==4.12.2
+markdown==3.5.1
+
+# HTTP client for API calls
+requests==2.31.0
+
+# JSON handling
+orjson==3.9.10
+
+# Async support
+aiohttp==3.9.1
+
+# Logging
+loguru==0.7.2

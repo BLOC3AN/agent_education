@@ -1,11 +1,13 @@
+
 import streamlit as st
 import requests 
 from typing import Any, Dict
 from src.utils.logger import Logger
-logger=Logger(__name__)
-
+import time  # Thêm import time
 import re
 import base64
+from src.tools.retrieve import RetrieveData
+logger=Logger(__name__)
 
 # --- Cấu hình chung ---
 # Cấu hình page chỉ chạy một lần
@@ -43,7 +45,12 @@ class GUI:
         with st.sidebar:
             st.header("⚙️ Cài đặt")
             # Nút toggle cho chế độ streaming (chỉ là giao diện, logic thực tế sẽ nhận full response)
-            streaming_mode = st.toggle("🔄 Streaming Mode", value=True, help="Bật để hiển thị hiệu ứng 'đang suy nghĩ' và đợi phản hồi đầy đủ. (Lưu ý: API hiện tại không hỗ trợ streaming từng token)")
+            streaming_mode = st.toggle("🔄 Streaming Mode", value=True, 
+                                      help="Bật để hiển thị hiệu ứng 'đang suy nghĩ' và đợi phản hồi đầy đủ.")
+            
+            # Thêm toggle cho RAG
+            use_rag = st.toggle("🔍 Sử dụng RAG", value=True,
+                               help="Bật để tìm kiếm thông tin liên quan từ cơ sở dữ liệu trước khi trả lời.")
 
             if st.button("🗑️ Xóa lịch sử chat"):
                 st.session_state.messages = []
@@ -121,15 +128,43 @@ class GUI:
         Gửi yêu cầu HTTP POST đến Agent FastAPI và trả về phản hồi.
         """
         try:
-            payload = {"input": user_input} # Dữ liệu cần gửi trong body của POST request
+            # Sử dụng RAG nếu được bật trong session state
+            if "use_rag" not in st.session_state or st.session_state.use_rag:
+                # Hiển thị trạng thái tìm kiếm
+                with st.status("Đang tìm kiếm thông tin liên quan...", expanded=False) as status:
+                    start_time = time.time()
+                    retrieve_data = RetrieveData().retrieve("giao_an_collection", user_input, limit=3)
+                    search_time = time.time() - start_time
+                    
+                    if retrieve_data:
+                        status.update(label=f"Tìm thấy {len(retrieve_data)} kết quả trong {search_time:.2f}s", state="complete")
+                    else:
+                        status.update(label="Không tìm thấy thông tin liên quan", state="complete")
+                    
+                    logger.info(f"Retrieved results from collection in {search_time:.2f}s: {retrieve_data}")
+                    
+                    if retrieve_data and not isinstance(retrieve_data, str):
+                        context_input = f"""
+Context information:
+{retrieve_data}
+
+User question: {user_input}
+"""
+                    else:
+                        context_input = f"User question: {user_input}"
+            else:
+                # RAG bị tắt
+                context_input = f"User question: {user_input}"
+                logger.info("Using direct query (RAG disabled)")
+            
+            payload = {"input": context_input}
 
             # Gửi POST request đến Agent API
-            response = requests.post(AGENT_API_URL, json=payload, timeout=60) # Thêm timeout
-            response.raise_for_status() # Ném HTTPError cho mã trạng thái lỗi (4xx hoặc 5xx)
+            response = requests.post(AGENT_API_URL, json=payload, timeout=60)
+            response.raise_for_status()
 
             # Phân tích phản hồi JSON từ Agent
             return response.json()
-
         except requests.exceptions.Timeout:
             return {"error": "API Timeout: Agent không phản hồi kịp thời."}
         except requests.exceptions.ConnectionError:
@@ -450,6 +485,26 @@ class GUI:
         except Exception as e:
             logger.error(f"❌ Lỗi khi tạo file DOCX: {str(e)}")
             return None, None
+
+    def _is_complex_question(self, question: str) -> bool:
+        """Đánh giá xem câu hỏi có phức tạp không dựa trên các tiêu chí đơn giản"""
+        # Các từ khóa chỉ ra câu hỏi phức tạp
+        complex_keywords = [
+            "tại sao", "giải thích", "phân tích", "so sánh", "đánh giá",
+            "làm thế nào", "nguyên nhân", "tác động", "ảnh hưởng", "phương pháp",
+            "chiến lược", "kế hoạch", "giáo án", "bài giảng"
+        ]
+        
+        # Kiểm tra độ dài
+        if len(question.split()) > 15:
+            return True
+        
+        # Kiểm tra từ khóa
+        for keyword in complex_keywords:
+            if keyword in question.lower():
+                return True
+        
+        return False
 
 # --- Hàm chạy ứng dụng Streamlit ---
 def run_gui():

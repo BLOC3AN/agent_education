@@ -64,7 +64,7 @@ class RedisClient:
             
             # Hiển thị thông tin về bộ nhớ Redis
             info = self.redis_client.info("memory")
-            logger.info(f"🧠 Redis memory: {info}")
+            logger.info(f"🧠 Redis memory: {info.keys()}")
             
             return True
         except Exception as e:

@@ -1,24 +1,42 @@
 from qdrant_client import QdrantClient, models
 import os
-from src.utils.logger import Logger
+from src.utils.logger import Logger # type: ignore
 from typing import Any, List
 logger = Logger(__name__)
 import uuid
+from functools import lru_cache
 
+# Sử dụng singleton pattern và caching để tránh tải lại model
 class QdrantVectorDB:
+    _instance = None
+    
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(QdrantVectorDB, cls).__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
+    
     def __init__(self):
+        if self._initialized:
+            return
+            
         self.url = os.getenv("QDRANT_CLOUD_URL")
         self.api_key=os.getenv("QDRANT_API_KEY")
         self.client = QdrantClient(url=self.url, api_key=self.api_key)
         self.vector_name = "dense"
         self.model_emmbedding = "BAAI/bge-small-en"
-
+        
+        # Khởi tạo cache cho các truy vấn
+        self.query_cache = {}
+        self.cache_size_limit = 100
+        
         logger.info(f"""
             QdrantVectorDB initialized with:
             - URL: {self.url}
             - Vector name: {self.vector_name}
             - Model embedding: {self.model_emmbedding}
         """)
+        self._initialized = True
 
     def get_all_collections(self) -> List|Any:
         """Get list collections in vectordb"""
@@ -89,12 +107,25 @@ class QdrantVectorDB:
 
 
     def query(self, collection_name: str, query_text: str, limit: int = 3) -> Any:
-        """Query a collection"""
+        """Query a collection with caching"""
         if not self.check_collection(collection_name):
             logger.error(f"❌ Collection {collection_name} does not exist")
             return "Error: Collection not exist"
         
+        # Tạo cache key
+        cache_key = f"{collection_name}:{query_text}:{limit}"
+        
+        # Kiểm tra cache
+        if cache_key in self.query_cache:
+            logger.info(f"✅ Retrieved results from cache for query: {query_text[:30]}...")
+            return self.query_cache[cache_key]
+        
         try:
+            # Đặt timeout cho truy vấn
+            import time
+            start_time = time.time()
+            timeout = 3.0  # 3 seconds timeout
+            
             dense_query = models.Document(text=query_text, model=self.model_emmbedding)
             results = self.client.query_points(
                 collection_name=collection_name,
@@ -107,7 +138,18 @@ class QdrantVectorDB:
                 limit=limit,
                 with_payload=True
             ).model_dump().get("points")
-            logger.info(f"✅ Retrieved results from collection {collection_name}")
+            
+            query_time = time.time() - start_time
+            logger.info(f"✅ Retrieved results from collection {collection_name} in {query_time:.2f}s")
+            
+            # Lưu vào cache
+            if len(self.query_cache) >= self.cache_size_limit:
+                # Xóa một key ngẫu nhiên nếu cache đầy
+                import random
+                key_to_remove = random.choice(list(self.query_cache.keys()))
+                del self.query_cache[key_to_remove]
+            
+            self.query_cache[cache_key] = results
             return results
         
         except Exception as e:

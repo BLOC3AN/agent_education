@@ -1,0 +1,78 @@
+# AWS Free Tier Optimized Docker Compose
+# Designed for EC2 t2.micro (1GB RAM, 1 vCPU)
+
+version: '3.8'
+
+services:
+  agent-education:
+    build:
+      context: ..
+      dockerfile: aws/Dockerfile
+    container_name: agent-education-aws
+    ports:
+      - "8501:8501"
+    environment:
+      - PYTHONPATH=/app
+      - AWS_LIGHTWEIGHT_MODE=true
+      - STREAMLIT_SERVER_MAX_UPLOAD_SIZE=50
+      - STREAMLIT_SERVER_MAX_MESSAGE_SIZE=50
+      - STREAMLIT_LOGGER_LEVEL=WARNING
+    env_file:
+      - .env.aws
+    volumes:
+      # Minimal volumes for AWS deployment
+      - ../data/agent_data:/app/data/agent_data:rw
+      # Logs volume
+      - agent-logs:/app/logs
+    restart: unless-stopped
+    networks:
+      - agent-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 60s
+      timeout: 15s
+      retries: 2
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 800M  # Leave 200M for system
+          cpus: '0.8'   # Leave 0.2 for system
+        reservations:
+          memory: 400M
+          cpus: '0.4'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Optional: Lightweight Redis for caching (only if needed)
+  # Uncomment if you need caching functionality
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: agent-education-redis-aws
+  #   ports:
+  #     - "6379:6379"
+  #   restart: unless-stopped
+  #   networks:
+  #     - agent-network
+  #   command: redis-server --maxmemory 50mb --maxmemory-policy allkeys-lru
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         memory: 100M
+  #         cpus: '0.1'
+  #   logging:
+  #     driver: "json-file"
+  #     options:
+  #       max-size: "5m"
+  #       max-file: "2"
+
+volumes:
+  agent-logs:
+    driver: local
+
+networks:
+  agent-network:
+    driver: bridge
