@@ -17,17 +17,19 @@ $ docker build -f aws/Dockerfile -t agent-education-aws:fixed ..
 
 ### Image Size Optimization
 ```bash
-$ docker images agent-education-aws:fixed
-REPOSITORY            TAG       IMAGE ID       CREATED          SIZE
-agent-education-aws   fixed     aeefca8917b5   10 seconds ago   532MB
+# Final lightweight version (without sentence-transformers)
+$ docker images agent-education-aws:lightweight
+REPOSITORY            TAG           IMAGE ID       CREATED          SIZE
+agent-education-aws   lightweight   dd59c3af9583   33 seconds ago   539MB
 ```
 
 **🎯 Results:**
-- ✅ **Image Size**: 532MB (target: <600MB for AWS Free Tier)
-- ✅ **Build Time**: 3.2 seconds (with cache), 93.6s (clean build)
+- ✅ **Image Size**: 539MB (target: <600MB for AWS Free Tier)
+- ✅ **Build Time**: 76 seconds (clean build without sentence-transformers)
 - ✅ **Multi-stage Build**: Working correctly
-- ✅ **Dependencies**: All resolved successfully
+- ✅ **Dependencies**: All resolved successfully (no torch conflicts)
 - ✅ **File Structure**: Fixed main.py → app.py issue
+- ✅ **Lightweight Patches**: Auto-applied for AWS Free Tier
 
 ## ✅ Runtime Test Results
 

@@ -16,10 +16,12 @@ Tối ưu hóa Agent Education Platform để chạy hiệu quả trên AWS Free
 ### 2. **aws/requirements.txt** - Dependencies tối ưu
 - ❌ **Loại bỏ**: `langchain` (full package, ~200MB)
 - ✅ **Thêm**: `langchain-core` (chỉ core, ~50MB)
+- ❌ **Loại bỏ**: `sentence-transformers` (torch conflicts, ~500MB)
 - ❌ **Loại bỏ**: Google API dependencies không cần thiết
 - ✅ **Thêm**: `orjson` (JSON nhanh hơn)
 - ✅ **Thêm**: `loguru` (logging hiệu quả)
 - ✅ **Thêm**: `aiohttp` (async HTTP client)
+- ✅ **Thêm**: `fastapi` + `uvicorn` (cho app.py)
 
 ### 3. **aws/docker-compose.yml** - Resource limits
 - ✅ **Memory limit**: 800MB (để lại 200MB cho OS)

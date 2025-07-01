@@ -14,8 +14,15 @@ python-docx==1.0.1
 # Vector database client - Qdrant Cloud
 qdrant-client==1.14.3
 
+# Text processing for LangChain (lightweight)
+langchain-text-splitters==0.3.2
+
 # Web framework - Streamlit with minimal config
 streamlit==1.46.0
+
+# FastAPI for app.py
+fastapi==0.110.2
+uvicorn==0.24.0
 
 # Text processing - essential only
 beautifulsoup4==4.12.2

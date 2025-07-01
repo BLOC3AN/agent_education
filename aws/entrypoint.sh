@@ -17,6 +17,10 @@ if [ "$AWS_LIGHTWEIGHT_MODE" = "true" ]; then
     # Limit Python memory usage
     export MALLOC_TRIM_THRESHOLD_=100000
     export MALLOC_MMAP_THRESHOLD_=100000
+
+    # Apply lightweight patches
+    echo "🔧 Applying AWS Free Tier patches..."
+    python /app/lightweight_retrieve_patch.py
 fi
 
 # Create necessary directories
