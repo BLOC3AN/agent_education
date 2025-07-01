@@ -6,11 +6,12 @@ Tối ưu hóa Agent Education Platform để chạy hiệu quả trên AWS Free
 ## 📦 Files đã tạo/thay đổi
 
 ### 1. **aws/Dockerfile** - Docker Image tối ưu
-- ✅ **Multi-stage build**: Giảm kích thước image từ ~2GB xuống ~500MB
+- ✅ **Multi-stage build**: Giảm kích thước image từ ~2GB xuống ~532MB
 - ✅ **Alpine Linux**: Thay thế Ubuntu, tiết kiệm 80% dung lượng
 - ✅ **Optimized layers**: Tối ưu caching và build time
 - ✅ **Non-root user**: Bảo mật container
 - ✅ **Health check**: Giảm tần suất từ 30s xuống 60s
+- ✅ **Fixed file structure**: Thay main.py bằng app.py (main.py là directory)
 
 ### 2. **aws/requirements.txt** - Dependencies tối ưu
 - ❌ **Loại bỏ**: `langchain` (full package, ~200MB)

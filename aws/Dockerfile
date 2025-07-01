@@ -56,7 +56,7 @@ COPY --from=builder /root/.local /home/appuser/.local
 # Copy only necessary source files
 COPY src/ ./src/
 COPY gui/ ./gui/
-COPY main.py ./
+COPY app.py ./
 COPY aws/entrypoint.sh /entrypoint.sh
 
 # Create minimal data directory
