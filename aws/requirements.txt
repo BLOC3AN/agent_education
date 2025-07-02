@@ -14,8 +14,15 @@ python-docx==1.0.1
 # Vector database client - Qdrant Cloud
 qdrant-client==1.14.3
 
+# Lightweight local embedding solution (no external API costs)
+numpy==1.24.3
+scikit-learn==1.3.0
+
 # Text processing for LangChain (lightweight)
 langchain-text-splitters==0.3.2
+
+# Note: Using TF-IDF embeddings instead of fastembed/sentence-transformers
+# This provides local embeddings without torch/onnxruntime dependencies
 
 # Web framework - Streamlit with minimal config
 streamlit==1.46.0

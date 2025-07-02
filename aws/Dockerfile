@@ -59,6 +59,7 @@ COPY gui/ ./gui/
 COPY app.py ./
 COPY aws/entrypoint.sh /entrypoint.sh
 COPY aws/lightweight_retrieve_patch.py /app/lightweight_retrieve_patch.py
+COPY aws/lightweight_embeddings.py /app/lightweight_embeddings.py
 
 # Create minimal data directory
 RUN mkdir -p /app/data/agent_data && \
